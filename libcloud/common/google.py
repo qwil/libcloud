@@ -354,14 +354,17 @@ class GoogleBaseAuthConnection(ConnectionUserAndKey):
         try:
             response = self.request('/o/oauth2/token', method='POST',
                                     data=data)
+            print('Request repsonse:', response)
         except AttributeError:
             raise GoogleAuthError('Invalid authorization response, please '
                                   'check your credentials and time drift.')
         token_info = response.object
+        print('Got token response:', token_info)
         if 'expires_in' in token_info:
             expire_time = _utcnow() + datetime.timedelta(
                 seconds=token_info['expires_in'])
             token_info['expire_time'] = _utc_timestamp(expire_time)
+            print('Modified response time:', token_info)
         return token_info
 
     def refresh_token(self, token_info):
@@ -442,6 +445,7 @@ class GoogleInstalledAppAuthConnection(GoogleBaseAuthConnection):
         :rtype:   ``dict``
         """
         if 'refresh_token' not in token_info:
+            print('No refresh token, getting new token.')
             return self.get_new_token()
         refresh_request = {'refresh_token': token_info['refresh_token'],
                            'client_id': self.user_id,
@@ -451,6 +455,7 @@ class GoogleInstalledAppAuthConnection(GoogleBaseAuthConnection):
         new_token = self._token_request(refresh_request)
         if 'refresh_token' not in new_token:
             new_token['refresh_token'] = token_info['refresh_token']
+        print('Returning new token:', new_token)
         return new_token
 
 
@@ -483,6 +488,7 @@ class GoogleServiceAcctAuthConnection(GoogleBaseAuthConnection):
                 contents = f.read()
             try:
                 key = json.loads(contents)
+                print('Service account key:', key)
                 key = key['private_key']
             except ValueError:
                 key = contents
@@ -545,6 +551,7 @@ class GoogleGCEServiceAcctAuthConnection(GoogleBaseAuthConnection):
             raise ValueError("Internal GCE Authorization failed: "
                              "'%s'" % str(http_reason))
         token_info = json.loads(token_info)
+        print('Got token:', token_info)
         if 'expires_in' in token_info:
             expire_time = _utcnow() + datetime.timedelta(
                 seconds=token_info['expires_in'])
@@ -611,6 +618,7 @@ class GoogleOAuth2Credential(object):
     def __init__(self, user_id, key, auth_type=None, credential_file=None,
                  scopes=None, **kwargs):
         self.auth_type = auth_type or GoogleAuthType.guess_type(user_id)
+        print('Using auth type', self.auth_type)
         if self.auth_type not in GoogleAuthType.ALL_TYPES:
             raise GoogleAuthError('Invalid auth type: %s' % self.auth_type)
         if not GoogleAuthType.is_oauth2(self.auth_type):
@@ -630,6 +638,7 @@ class GoogleOAuth2Credential(object):
         ]
 
         self.token = self._get_token_from_file()
+        print('Got token from file: ', self.token)
 
         if self.auth_type == GoogleAuthType.GCE:
             self.oauth2_conn = GoogleGCEServiceAcctAuthConnection(
@@ -645,7 +654,9 @@ class GoogleOAuth2Credential(object):
                                   str(self.auth_type))
 
         if self.token is None:
+            print('Getting new token')
             self.token = self.oauth2_conn.get_new_token()
+            print('Writing new token to file:', self.token)
             self._write_token_to_file()
 
     @property
@@ -688,9 +699,15 @@ class GoogleOAuth2Credential(object):
         """
         filename = os.path.realpath(os.path.expanduser(self.credential_file))
         data = json.dumps(self.token)
+        print('Dumped data', data)
+
         with os.fdopen(os.open(filename, os.O_CREAT | os.O_WRONLY,
                                int('600', 8)), 'w') as f:
             f.write(data)
+            print('Writing data', data)
+
+        with os.open(filename, 'w') as f:
+            print('Read back data', f.read())
 
 
 class GoogleBaseConnection(ConnectionUserAndKey, PollingConnection):
