@@ -687,7 +687,9 @@ class GoogleOAuth2Credential(object):
         try:
             with open(filename, 'r') as f:
                 data = f.read()
+            print('Got data', data)
             token = json.loads(data)
+            print('Got token', token)
         except IOError:
             pass
         return token
@@ -706,7 +708,7 @@ class GoogleOAuth2Credential(object):
             f.write(data)
             print('Writing data', data)
 
-        with os.open(filename, 'w') as f:
+        with open(filename, 'r') as f:
             print('Read back data', f.read())
 
 
