@@ -703,7 +703,7 @@ class GoogleOAuth2Credential(object):
         data = json.dumps(self.token)
         print('Dumped data', data)
 
-        with os.fdopen(os.open(filename, os.O_CREAT | os.O_WRONLY,
+        with os.fdopen(os.open(filename, os.O_CREAT | os.O_WRONLY | os.O_TRUNC,
                                int('600', 8)), 'w') as f:
             f.write(data)
             print('Writing data', data)
